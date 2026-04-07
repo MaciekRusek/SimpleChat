@@ -1,3 +1,6 @@
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -9,13 +12,20 @@ import java.util.ArrayList;
 
 public class ChatServer implements Runnable {
     private int port = 9000;
+    private ServerSocket serverSocket;
     private ArrayList<Socket> clientSockets = new ArrayList<Socket>();
+
+    private static final Logger logger = LogManager.getLogger();
 
     public ChatServer() {
     }
 
     public ChatServer(int port) {
         this.port = port;
+    }
+
+    public ServerSocket getServerSocket() {
+        return serverSocket;
     }
 
     private User getOrCreateUser(String username) {
@@ -36,7 +46,6 @@ public class ChatServer implements Runnable {
 
     private void handleClient(Socket socket) {
         try {
-            clientSockets.add(socket);
 
             String msg;
             User user = null;
@@ -54,6 +63,8 @@ public class ChatServer implements Runnable {
                     if (msg.toLowerCase().startsWith("/login")) {
                         String username = msg.substring(6).strip();
                         user = getOrCreateUser(username);
+                        clientSockets.add(socket);
+                        logger.info("Client sie połączył");
                     }
                 }
             }
@@ -68,7 +79,8 @@ public class ChatServer implements Runnable {
     @Override
     public void run() {
         try {
-            ServerSocket serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket(port);
+
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
