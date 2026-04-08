@@ -1,3 +1,6 @@
+package server;
+
+import user.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -64,7 +67,7 @@ public class ChatServer implements Runnable {
                         String username = msg.substring(6).strip();
                         user = getOrCreateUser(username);
                         clientSockets.add(socket);
-                        logger.info("Client sie połączył");
+                        logger.info("client.Client sie połączył");
                     }
                 }
             }
@@ -81,6 +84,7 @@ public class ChatServer implements Runnable {
         try {
             serverSocket = new ServerSocket(port);
 
+            logger.error("Test");
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
