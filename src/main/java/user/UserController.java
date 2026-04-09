@@ -10,11 +10,17 @@ public class UserController {
         this.service = service;
     }
 
-    public Optional<User> loginIntoUser(
+    public Optional<User> createUser(
             String username,
             String password
     ) {
-        return service.loginIntoUser(username, password);
+        return service.createUser(username, password);
     }
 
+    public Optional<User> getUser(
+            String username,
+            String password
+    ) {
+        return service.getUser(username, password);
+    }
 }

@@ -14,12 +14,29 @@ public class UserService {
         this.userDao = userDao;
     }
 
-    public Optional<User> loginIntoUser(
+    public Optional<User> createUser(
             String username,
             String pass
     ) {
         try {
+
+            if (!userDao.checkIfUsernameExists(username)) {
+                return userDao.insertUser(username, pass);
+            }
+
             return Optional.empty();
+        } catch (Exception e) {
+            logger.error("Error creating user: {}", e.toString());
+            return Optional.empty();
+        }
+    }
+
+    public Optional<User> getUser(
+            String username,
+            String pass
+    ) {
+        try {
+            return userDao.getUser(username, pass);
         } catch (Exception e) {
             logger.error("Error while login into user: {}", e.toString());
             return Optional.empty();
