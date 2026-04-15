@@ -1,8 +1,10 @@
 package server;
 
+import auth.PasswordService;
 import user.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import user.UserController;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,28 +13,24 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-
+import java.util.Arrays;
+import java.util.Optional;
 
 public class ChatServer implements Runnable {
-    private int port = 9000;
-    private ServerSocket serverSocket;
-    private ArrayList<Socket> clientSockets = new ArrayList<Socket>();
-
     private static final Logger logger = LogManager.getLogger();
 
-    public ChatServer() {
-    }
+    private int port = 9000;
+    private ServerSocket serverSocket;
+    private UserController controller;
+    private ArrayList<Socket> clientSockets = new ArrayList<Socket>();
 
-    public ChatServer(int port) {
+    public ChatServer(int port, UserController userController) {
         this.port = port;
+        this.controller = userController;
     }
 
     public ServerSocket getServerSocket() {
         return serverSocket;
-    }
-
-    private User getOrCreateUser(String username) {
-        return new User(username);
     }
 
     private void SendMessage(User user, String msg) {
@@ -49,42 +47,103 @@ public class ChatServer implements Runnable {
 
     private void handleClient(Socket socket) {
         try {
-
             String msg;
             User user = null;
 
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            out.println("Login: /login username");
             while ((msg = in.readLine()) != null) {
-                if (user != null) {
-                    SendMessage(user, msg);
-                }
+                if (msg.toLowerCase().startsWith("/")) {
+                    ArrayList<String> result = new ArrayList<>();
+                    String[] data = msg.toLowerCase().replace("/", "").split(" ");
+                    String path = data[0];
+                    String[] restArray = Arrays.copyOfRange(data, 1, data.length);
 
-                if (user == null) {
-                    if (msg.toLowerCase().startsWith("/login")) {
-                        String username = msg.substring(6).strip();
-                        user = getOrCreateUser(username);
-                        clientSockets.add(socket);
-                        logger.info("client.Client sie połączył");
+                    switch (path) {
+                        case "login":
+                            if (user != null) {
+                                result.add("You are already logged in");
+                                break;
+                            }
+
+                            if (restArray.length == 2) {
+                                String username = restArray[0];
+                                String password = restArray[1];
+
+                                Optional<User> userOptional = controller.getUser(username, password);
+
+                                if (userOptional.isPresent()) {
+                                    user = userOptional.get();
+                                    clientSockets.add(socket);
+                                } else {
+                                    result.add("Login failed. Please enter the correct password!");
+                                    break;
+                                }
+                            } else {
+                                result.add("Login failed. Please enter the correct password!");
+                            }
+                            break;
+                        case "register":
+                            if (user != null) {
+                                result.add("You are already logged in");
+                                break;
+                            }
+
+                            if (restArray.length == 2) {
+                                String username = restArray[0];
+                                String password = restArray[1];
+
+                                Optional<User> userOptional = controller.createUser(username, password);
+
+                                if (userOptional.isPresent()) {
+                                    user = userOptional.get();
+                                    clientSockets.add(socket);
+                                } else {
+                                    result.add("Register failed. Please enter the correct password!");
+                                    break;
+                                }
+
+                            } else {
+                                result.add("Register failed. Please enter the correct password!");
+                            }
+                            break;
+                        case "logout":
+                            user = null;
+                            clientSockets.remove(socket);
+                            result.add("You have been logged out");
+                            break;
+                        case "help":
+                            result.add("/login - Login into your account, example: /login Janek Password123");
+                            result.add("/register - Create an account, example: /register Olek Password321");
+                            result.add("/logout - logout account");
+                            break;
+                        case null, default:
+                            result.add("Invalid command!");
+                            break;
+                    }
+
+                    if (result != null) {
+                        result.forEach(out::println);
+                    }
+                } else {
+                    if (user != null) {
+                        SendMessage(user, msg);
+                    } else {
+                        out.println("Please login or register...");
                     }
                 }
             }
-
         } catch (IOException e) {
             clientSockets.remove(socket);
-            e.printStackTrace();
+            logger.error(e.toString());
         }
     }
-
 
     @Override
     public void run() {
         try {
             serverSocket = new ServerSocket(port);
-
-            logger.error("Test");
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();

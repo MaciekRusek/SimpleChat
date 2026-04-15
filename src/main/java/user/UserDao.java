@@ -1,10 +1,11 @@
 package user;
 
+import auth.PasswordService;
+
 import java.sql.*;
 import java.util.Optional;
 
 public class UserDao {
-
     public static final String DRIVER = "org.sqlite.JDBC";
     public static final String DB_URL = "jdbc:sqlite:chat.db";
 
@@ -57,12 +58,13 @@ public class UserDao {
 
     public Optional<User> insertUser(String username, String password) {
         try {
+            String hashPassword = PasswordService.hashPassword(password);
             PreparedStatement preparedStatement = conn.prepareStatement(
                     "INSERT INTO users VALUES (NULL, ?, ?);"
             );
 
             preparedStatement.setString(1, username);
-            preparedStatement.setString(2, password); // FIXME, later hash or smth..
+            preparedStatement.setString(2, hashPassword);
             preparedStatement.execute();
 
             User user = new User(username);
@@ -82,13 +84,11 @@ public class UserDao {
             preparedStatement.setString(1, username);
             ResultSet result = preparedStatement.executeQuery();
 
-            // FIXME: Hasło tu też ogarnąć
             String passwordFromDB;
-
             while (result.next()) {
                 passwordFromDB = result.getString("password");
 
-                if (password.equals(passwordFromDB)) {
+                if (PasswordService.comparePassword(password, passwordFromDB)) {
                     return Optional.of(new User(username));
                 } else {
                     return Optional.empty();
